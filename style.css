@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #232323;
+  padding: 50px 0;
+}
+
+.wrapper{
+  color: #fff;
+  background: rgba(0, 0, 0, 0.371);
+  width: 50%;
+  max-width: 31.25em;
+  padding: 2em;
+  border-radius: 0.5em;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(7.4px);
+  -webkit-backdrop-filter: blur(7.4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+
+.titulo{
+    font-size: 2.2em;
+    text-align: center;
+}
+
+.brasil{
+    font-size: 1em;
+    text-align: center;
+    padding-bottom: 10px;
+}
+
+.botao {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    text-decoration: none;
+    color: #d2d2d2;
+    font-size: 14px;
+    border-radius: 6px;
+    width: 100%;
+    height: 40px;
+    font-weight: bold;
+    border: 0.2px solid #5a5a5a;
+    transition: 0.2s;
+    box-shadow: 5px 5px 0px 0px rgb(0, 0, 0);
+    background-color: #ffffff00;
+  }
+  
+  .botao:hover {
+    box-shadow: 0 0 #000000;
+    color: #ffffff;
+    background-color: #000000b5;
+  }
+
+  .textum {
+    font-size: 1em;
+    text-align: center;
+    padding-top: 6px;
+  }
+
+  .textdois {
+    font-size: 0.8em;
+    text-align: center;
+    color: rgba(90, 90, 90, 0.525);
+  }
+
+  input#B {
+        background-color: transparent;
+        border: 0.6px solid #ccc;
+        color: #fff;
+        padding: 0.5em;
+        width: 100%;
+        margin: 1.0em auto 0 auto;
+        border-radius: 0.3em;
+        cursor: pointer;
+        font-size: 1em;
+        text-align: center;
+  }
+
+  input#A {
+    background-color: transparent;
+    border: 0.0px solid #ccc;
+    color: #ffffff00;
+    padding: 0em;
+    width: 0%;
+    margin: 0em auto 0 auto;
+    border-radius: 0em;
+    font-size: 0em;
+    text-align: center;
+  }
+
+  input#Key {
+    background-color: transparent;
+    border: 0.0px solid #ccc;
+    color: #ffffff00;
+    padding: 0em;
+    width: 0%;
+    margin: 0em auto 0 auto;
+    border-radius: 0em;
+    font-size: 0em;
+    text-align: center;
+  }
+
+  .disclaimer {
+    text-align: center;
+    font-size: 0.6em;
+    padding-top: 0px;
+    color: rgba(174, 174, 174, 0.362);
+  }
