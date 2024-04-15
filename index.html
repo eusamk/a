@@ -3,26 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="script.js"></script>
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <title>Enviar Gemidao | :) </title>
+    <title>Roleta Online</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="wrapper">
-        <div class="titulo">Enviar Gemidão</div>
-        <div class="brasil">Aqui você pode enviar anonimamente gemidões para a galera!</div> <hr>
-        <div class="container">
-            <form>
-                <div class="textum">Número de quem vai receber a ligação:</div>
-                <input id="B" placeholder="45999999999"/>
-                <input id="A"/>
-                <div class="textdois">Agora é só clicar no botão abaixo e esperar a pessoa ficar brava :)</div>
-                <button class="botao" type="button" onclick="enviar()">Enviar</button>
-                <!--  Sai dai burro -->
-                <input id="Key" value="744c56e90fc6b4cfdff2cd14cded33a9">
-            </form>
-            <div class="disclaimer">  🛈 Disclaimer - O uso do *website* é de responsabilidade do usuário.</div>
-            </body>
+    <div id="container">
+        <header>
+            <h1>Roleta Online</h1>
+        </header>
+        <main>
+            <div id="mesa">
+                <canvas id="roleta" width="600" height="600"></canvas>
+                <div id="area-apostas">
+                    <input type="number" id="valor-aposta" placeholder="Valor da aposta">
+                    <select id="tipo-aposta">
+                        <option value="numero">Número</option>
+                        <option value="par">Par</option>
+                        <option value="impar">Ímpar</option>
+                    </select>
+                    <button id="fazer-aposta">Fazer Aposta</button>
+                </div>
+            </div>
+            <div id="painel-controle">
+                <div id="saldo">Saldo: R$<span id="saldo-atual">1000</span></div>
+                <div id="botoes">
+                    <button id="girar">Girar</button>
+                    <button id="zerar">Zerar</button>
+                </div>
+                <div id="historico"></div>
+            </div>
+        </main>
+        <footer>
+            <p>&copy; 2024 - Roleta Online</p>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
 </html>
-<!--  Site by Up.SamK -->
