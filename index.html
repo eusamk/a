@@ -1,42 +1,96 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roleta Online</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Xtream Player</title>
+    <style>
+        body {
+            background: #fff;
+            color: #000;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        input, button {
+            margin: 5px;
+            padding: 10px;
+            width: 300px;
+        }
+        .content {
+            margin-top: 20px;
+        }
+        .card {
+            border: 1px solid #000;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
-    <div id="container">
-        <header>
-            <h1>Roleta Online</h1>
-        </header>
-        <main>
-            <div id="mesa">
-                <canvas id="roleta" width="600" height="600"></canvas>
-                <div id="area-apostas">
-                    <input type="number" id="valor-aposta" placeholder="Valor da aposta">
-                    <select id="tipo-aposta">
-                        <option value="numero">Número</option>
-                        <option value="par">Par</option>
-                        <option value="impar">Ímpar</option>
-                    </select>
-                    <button id="fazer-aposta">Fazer Aposta</button>
-                </div>
-            </div>
-            <div id="painel-controle">
-                <div id="saldo">Saldo: R$<span id="saldo-atual">1000</span></div>
-                <div id="botoes">
-                    <button id="girar">Girar</button>
-                    <button id="zerar">Zerar</button>
-                </div>
-                <div id="historico"></div>
-            </div>
-        </main>
-        <footer>
-            <p>&copy; 2024 - Roleta Online</p>
-        </footer>
-    </div>
-    <script src="script.js"></script>
+
+    <h1>Xtream Player</h1>
+
+    <input type="text" id="host" placeholder="Host (ex: http://123.456.789.10:8080)">
+    <input type="text" id="username" placeholder="Usuário">
+    <input type="password" id="password" placeholder="Senha">
+    <button onclick="loadXtream()">Carregar Conteúdo</button>
+
+    <div class="content" id="content"></div>
+
+    <script>
+        async function loadXtream() {
+            const host = document.getElementById('host').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const url = `${host}/player_api.php?username=${username}&password=${password}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                const movies = data.available_channels ? data.available_channels : data.available_movies;
+                const contentDiv = document.getElementById('content');
+                contentDiv.innerHTML = '';
+
+                if (data.user_info && data.user_info.auth == 1) {
+                    contentDiv.innerHTML += `<h2>Bem-vindo, ${username}</h2>`;
+                    contentDiv.innerHTML += `<p>Status: Ativo</p>`;
+                } else {
+                    contentDiv.innerHTML = `<p>Login inválido ou falha na autenticação.</p>`;
+                    return;
+                }
+
+                // Exibe lista de filmes ou canais
+                if (movies && movies.length > 0) {
+                    movies.forEach(item => {
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        card.innerHTML = `<strong>${item.name}</strong> <br>
+                                          <button onclick="playStream('${host}', '${username}', '${password}', '${item.stream_id}')">Assistir</button>`;
+                        contentDiv.appendChild(card);
+                    });
+                } else {
+                    contentDiv.innerHTML += '<p>Nenhum conteúdo encontrado.</p>';
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('content').innerHTML = '<p>Erro ao carregar dados. Verifique o host e as credenciais.</p>';
+            }
+        }
+
+        function playStream(host, username, password, stream_id) {
+            const streamUrl = `${host}/live/${username}/${password}/${stream_id}.m3u8`;
+            const playerWindow = window.open('', '_blank');
+            playerWindow.document.write(`
+                <video controls autoplay style="width:100%; height:100%;">
+                    <source src="${streamUrl}" type="application/x-mpegURL">
+                    Seu navegador não suporta a reprodução de vídeo.
+                </video>
+            `);
+        }
+    </script>
+
 </body>
 </html>
