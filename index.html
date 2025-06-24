@@ -1,96 +1,57 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xtream Player</title>
-    <style>
-        body {
-            background: #fff;
-            color: #000;
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        input, button {
-            margin: 5px;
-            padding: 10px;
-            width: 300px;
-        }
-        .content {
-            margin-top: 20px;
-        }
-        .card {
-            border: 1px solid #000;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>DIA DO PAGAMENTO</title>
+  <style>
+    body {
+      background: #111;
+      color: #0f0;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      font-size: 60px;
+      margin: 0;
+      text-shadow: 0 0 10px #0f0;
+    }
+    .contador {
+      font-size: 40px;
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
+  <h1>DIA DO PAGAMENTO</h1>
+  <div class="contador" id="contador"></div>
 
-    <h1>Xtream Player</h1>
+  <script>
+    function atualizarContador() {
+      const agora = new Date();
+      const pagamento = new Date('2025-07-05T00:00:00');
+      const diff = pagamento - agora;
 
-    <input type="text" id="host" placeholder="Host (ex: http://123.456.789.10:8080)">
-    <input type="text" id="username" placeholder="Usuário">
-    <input type="password" id="password" placeholder="Senha">
-    <button onclick="loadXtream()">Carregar Conteúdo</button>
+      if (diff <= 0) {
+        document.getElementById('contador').textContent = "É HOJE!";
+        return;
+      }
 
-    <div class="content" id="content"></div>
+      const dias = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const horas = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutos = Math.floor((diff / (1000 * 60)) % 60);
+      const segundos = Math.floor((diff / 1000) % 60);
 
-    <script>
-        async function loadXtream() {
-            const host = document.getElementById('host').value;
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+      document.getElementById('contador').textContent =
+        `${dias} dias, ${horas}h ${minutos}m ${segundos}s`;
+    }
 
-            const url = `${host}/player_api.php?username=${username}&password=${password}`;
-
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-
-                const movies = data.available_channels ? data.available_channels : data.available_movies;
-                const contentDiv = document.getElementById('content');
-                contentDiv.innerHTML = '';
-
-                if (data.user_info && data.user_info.auth == 1) {
-                    contentDiv.innerHTML += `<h2>Bem-vindo, ${username}</h2>`;
-                    contentDiv.innerHTML += `<p>Status: Ativo</p>`;
-                } else {
-                    contentDiv.innerHTML = `<p>Login inválido ou falha na autenticação.</p>`;
-                    return;
-                }
-
-                // Exibe lista de filmes ou canais
-                if (movies && movies.length > 0) {
-                    movies.forEach(item => {
-                        const card = document.createElement('div');
-                        card.className = 'card';
-                        card.innerHTML = `<strong>${item.name}</strong> <br>
-                                          <button onclick="playStream('${host}', '${username}', '${password}', '${item.stream_id}')">Assistir</button>`;
-                        contentDiv.appendChild(card);
-                    });
-                } else {
-                    contentDiv.innerHTML += '<p>Nenhum conteúdo encontrado.</p>';
-                }
-
-            } catch (error) {
-                console.error('Erro:', error);
-                document.getElementById('content').innerHTML = '<p>Erro ao carregar dados. Verifique o host e as credenciais.</p>';
-            }
-        }
-
-        function playStream(host, username, password, stream_id) {
-            const streamUrl = `${host}/live/${username}/${password}/${stream_id}.m3u8`;
-            const playerWindow = window.open('', '_blank');
-            playerWindow.document.write(`
-                <video controls autoplay style="width:100%; height:100%;">
-                    <source src="${streamUrl}" type="application/x-mpegURL">
-                    Seu navegador não suporta a reprodução de vídeo.
-                </video>
-            `);
-        }
-    </script>
-
+    setInterval(atualizarContador, 1000);
+    atualizarContador();
+  </script>
 </body>
 </html>
