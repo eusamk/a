@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a63c9">
+<title>KDM Internet — Realidade Aumentada</title>
+<style>
+  :root { --azul:#0a63c9; --azul-esc:#06376f; --amarelo:#ffc933; --branco:#fff; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#000; font-family:"Poppins",system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--branco); }
+  #ar { position:fixed; inset:0; }
+  .tela { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; background:linear-gradient(160deg,var(--azul),var(--azul-esc)); z-index:20; }
+  .tela h1 { margin:0; font-size:44px; letter-spacing:-1px; }
+  .tela p { margin:0; opacity:.9; max-width:30ch; }
+  .tela button { font:inherit; font-weight:600; border:0; border-radius:999px; padding:12px 24px; background:var(--amarelo); color:var(--azul-esc); }
+  .oculto { display:none !important; }
+  #dica { position:fixed; left:0; right:0; bottom:calc(96px + env(safe-area-inset-bottom)); text-align:center; z-index:10; pointer-events:none; }
+  #dica span { display:inline-block; background:rgba(6,55,111,.85); padding:10px 18px; border-radius:999px; font-size:15px; }
+  #moldura { position:fixed; left:50%; top:42%; width:62vw; max-width:300px; aspect-ratio:252/344; transform:translate(-50%,-50%); border:3px dashed rgba(255,255,255,.8); border-radius:18px; z-index:9; pointer-events:none; animation:pulsa 1.6s ease-in-out infinite; }
+  @keyframes pulsa { 50% { opacity:.35; } }
+  #zap { position:fixed; left:16px; right:16px; bottom:calc(20px + env(safe-area-inset-bottom)); z-index:10; display:flex; justify-content:center; }
+  #zap a { display:flex; align-items:center; gap:10px; background:#25d366; color:#06361a; font-weight:600; text-decoration:none; padding:14px 22px; border-radius:999px; box-shadow:0 6px 20px rgba(0,0,0,.35); }
+  #zap svg { width:22px; height:22px; fill:currentColor; }
+  @media (prefers-reduced-motion:reduce) { #moldura { animation:none; } }
+</style>
+</head>
+<body>
+<div id="ar"></div>
+
+<div id="carregando" class="tela">
+  <h1>KDM</h1>
+  <p id="status">Preparando a câmera…</p>
+</div>
+
+<div id="erro" class="tela oculto">
+  <h1>Câmera bloqueada</h1>
+  <p id="erroMsg">Permita o acesso à câmera nas configurações do navegador e tente de novo.</p>
+  <button onclick="location.reload()">Tentar novamente</button>
+</div>
+
+<div id="moldura" class="oculto"></div>
+<div id="dica" class="oculto"><span>Aponte a câmera para o panfleto da KDM</span></div>
+<div id="zap" class="oculto">
+  <a id="zapLink" href="#" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.8-.1 1.4z"/></svg>
+    Chamar no WhatsApp
+  </a>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+} }
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { FontLoader } from "three/addons/loaders/FontLoader.js";
+import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
+import { MindARThree } from "mindar-image-three";
+
+/* ====== CONFIGURAÇÃO — edite aqui ====== */
+const WHATSAPP = "5545999410213";            // DDI + DDD + número
+const IMAGEM   = "./panfleto.png";           // arte do panfleto (use a original em alta resolução)
+const ALVO     = "./targets.mind";           // opcional: arquivo pré-compilado (carrega bem mais rápido)
+const MSG_BASE = "Olá! Vim pelo panfleto e quero o plano de ";
+const FONTE    = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json";
+
+// Posição de cada plano no panfleto, em fração da imagem (x0,y0 = canto superior esquerdo; x1,y1 = inferior direito)
+const PLANOS = [
+  { nome: "890 MEGA",  x0: .17, y0: .17, x1: .82, y1: .33 },
+  { nome: "1000 MEGA", x0: .09, y0: .35, x1: .91, y1: .57 },
+  { nome: "790 MEGA",  x0: .18, y0: .57, x1: .80, y1: .73 },
+];
+/* ======================================= */
+
+const $ = id => document.getElementById(id);
+const status = t => $("status").textContent = t;
+$("zapLink").href = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent("Olá! Vim pelo panfleto da KDM.")}`;
+
+const carregaImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
+const carregaScript = src => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+const carregaFonte = () => new Promise(ok => new FontLoader().load(FONTE, ok, undefined, () => ok(null)));
+
+async function obterAlvo(img) {
+  try { const r = await fetch(ALVO, { method: "HEAD" }); if (r.ok) return ALVO; } catch (e) {}
+  status("Preparando o reconhecimento do panfleto…");
+  await carregaScript("https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js");
+  const compilador = new window.MINDAR.IMAGE.Compiler();
+  await compilador.compileImageTargets([img], p => status(`Preparando o reconhecimento… ${Math.round(p)}%`));
+  return URL.createObjectURL(new Blob([await compilador.exportData()]));
+}
+
+/* ---------- utilidades de animação ---------- */
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const easeOutBack = x => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const entrada = (tf, atraso, dur = .8) => easeOutBack(clamp((tf - atraso) / dur));
+
+/* ---------- texturas ---------- */
+function texturaContorno(w, h) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = Math.round(512 * h / w);
+  const g = c.getContext("2d"); g.shadowColor = "#ffc933"; g.shadowBlur = 18;
+  g.strokeStyle = "#ffc933"; g.lineWidth = 8;
+  g.beginPath(); g.roundRect(14, 14, c.width - 28, c.height - 28, 28); g.stroke();
+  return new THREE.CanvasTexture(c);
+}
+function texturaChip(texto) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128;
+  const g = c.getContext("2d");
+  g.fillStyle = "#ffc933"; g.beginPath(); g.roundRect(4, 4, 504, 120, 60); g.fill();
+  g.fillStyle = "#06376f"; g.font = "700 54px Poppins, system-ui, sans-serif";
+  g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(texto, 256, 68);
+  return new THREE.CanvasTexture(c);
+}
+
+/* ---------- modelos 3D ---------- */
+const mat = (cor, extra = {}) => new THREE.MeshStandardMaterial({ color: cor, roughness: .35, metalness: .15, ...extra });
+
+function criarFoguete() {
+  const f = new THREE.Group();
+  const corpo = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, 1.3, 28), mat(0xffffff));
+  const nariz = new THREE.Mesh(new THREE.ConeGeometry(.35, .6, 28), mat(0x0a63c9)); nariz.position.y = .95;
+  const faixa = new THREE.Mesh(new THREE.CylinderGeometry(.355, .355, .12, 28), mat(0xffc933)); faixa.position.y = -.3;
+  const janela = new THREE.Mesh(new THREE.SphereGeometry(.17, 20, 20), mat(0x7fd0ff, { emissive: 0x2a90ff, emissiveIntensity: .6 })); janela.position.set(0, .25, .3);
+  f.add(corpo, nariz, faixa, janela);
+  for (let i = 0; i < 3; i++) {
+    const asa = new THREE.Mesh(new THREE.BoxGeometry(.5, .55, .06), mat(0x0a63c9));
+    const a = new THREE.Object3D(); a.rotation.y = i * Math.PI * 2 / 3;
+    asa.position.set(.4, -.6, 0); a.add(asa); f.add(a);
+  }
+  const chama = new THREE.Mesh(new THREE.ConeGeometry(.28, .9, 16), new THREE.MeshBasicMaterial({ color: 0xff9a1f }));
+  chama.rotation.x = Math.PI; chama.position.y = -1.1; chama.name = "chama";
+  const nucleo = new THREE.Mesh(new THREE.ConeGeometry(.14, .6, 16), new THREE.MeshBasicMaterial({ color: 0xffee88 }));
+  nucleo.rotation.x = Math.PI; nucleo.position.y = -.95; nucleo.name = "nucleo";
+  f.add(chama, nucleo);
+  return f;
+}
+
+function criarRoteador() {
+  const r = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(.2, .035, .12), mat(0xf4f7fb)); r.add(base);
+  for (const sx of [-1, 1]) {
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(.007, .007, .13, 10), mat(0xf4f7fb));
+    ant.position.set(sx * .08, .08, 0); ant.rotation.z = -sx * .35; r.add(ant);
+  }
+  const led = new THREE.Mesh(new THREE.SphereGeometry(.012, 12, 12), new THREE.MeshBasicMaterial({ color: 0x35ff7a }));
+  led.position.set(-.06, .022, .045); led.name = "led"; r.add(led);
+  return r;
+}
+
+async function iniciar() {
+  const img = await carregaImg(IMAGEM);
+  const H = img.naturalHeight / img.naturalWidth;       // altura relativa (largura = 1)
+  const alvo = await obterAlvo(img);
+  status("Carregando efeitos 3D…");
+  const fonte = await carregaFonte();
+
+  status("Abrindo a câmera…");
+  const mindar = new MindARThree({ container: $("ar"), imageTargetSrc: alvo, uiLoading: "no", uiScanning: "no", uiError: "no", maxTrack: 1 });
+  const { renderer, scene, camera } = mindar;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x3a6ea5, 1.4));
+  const luz = new THREE.DirectionalLight(0xffffff, 1.4); luz.position.set(1, 2, 3); scene.add(luz);
+
+  const ancora = mindar.addAnchor(0);
+  const G = ancora.group;
+  const X = fx => fx - .5, Y = fy => (.5 - fy) * H;
+
+  const animados = [];   // cada item: (t, tf) => void   (t = tempo total, tf = tempo desde que o panfleto foi reconhecido)
+  const chips = [];
+
+  /* Planos: volume 3D, contorno pulsante, número 3D flutuante e botão */
+  PLANOS.forEach((p, i) => {
+    const w = p.x1 - p.x0, h = (p.y1 - p.y0) * H, cx = X((p.x0 + p.x1) / 2), cy = Y((p.y0 + p.y1) / 2);
+    const atraso = .15 + i * .3;
+
+    const grupo = new THREE.Group(); grupo.position.set(cx, cy, 0); G.add(grupo);
+    const laje = new THREE.Mesh(new THREE.BoxGeometry(w, h, .05), mat(0xffc933, { transparent: true, opacity: .28, emissive: 0xffa500, emissiveIntensity: .35 }));
+    laje.position.z = .03;
+    const contorno = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: texturaContorno(w, h), transparent: true }));
+    contorno.position.z = .06;
+    grupo.add(laje, contorno);
+
+    const chip = new THREE.Mesh(new THREE.PlaneGeometry(.36, .09), new THREE.MeshBasicMaterial({ map: texturaChip("Quero este!"), transparent: true }));
+    chip.userData.msg = MSG_BASE + p.nome + ".";
+    G.add(chip); chips.push(chip);
+
+    let texto = null;
+    if (fonte) {
+      const geo = new TextGeometry(p.nome, { font: fonte, size: .075, height: .025, curveSegments: 6, bevelEnabled: true, bevelThickness: .004, bevelSize: .003, bevelSegments: 2 });
+      geo.computeBoundingBox(); geo.translate(-(geo.boundingBox.max.x + geo.boundingBox.min.x) / 2, 0, 0);
+      texto = new THREE.Mesh(geo, mat(0xffffff, { emissive: 0x1d7bff, emissiveIntensity: .8 }));
+      G.add(texto);
+    }
+
+    animados.push((t, tf) => {
+      const e = entrada(tf, atraso);
+      grupo.scale.set(e, e, e);
+      grupo.rotation.x = (1 - clamp(e)) * 1.4;
+      grupo.position.z = .02 * Math.sin(t * 2 + i);
+      contorno.material.opacity = .55 + .45 * Math.sin(t * 3.2 + i);
+
+      const ec = entrada(tf, atraso + .35);
+      chip.scale.setScalar(Math.max(ec, .001));
+      chip.position.set(X(p.x1) - .16, cy + h / 2 + .02 + .012 * Math.sin(t * 3 + i), .12 + .03 * Math.sin(t * 2.4 + i));
+      chip.rotation.z = .05 * Math.sin(t * 2.6 + i);
+
+      if (texto) {
+        const et = entrada(tf, atraso + .2);
+        texto.scale.setScalar(Math.max(et, .001));
+        texto.position.set(X(p.x0) + .24, cy + h / 2 + .045 + .015 * Math.sin(t * 2.2 + i), .2 + .03 * Math.sin(t * 1.8 + i));
+        texto.rotation.y = .5 * Math.sin(t * 1.4 + i * 1.3);
+        texto.rotation.x = -.15;
+      }
+    });
+  });
+
+  /* Roteador 3D + ondas de sinal Wi-Fi saindo do plano de 1000 MEGA */
+  const meio = PLANOS[1];
+  const rx = X(.78), ry = Y((meio.y0 + meio.y1) / 2 + .02);
+  const roteador = criarRoteador(); roteador.position.set(rx, ry, .16); roteador.scale.setScalar(1.15); G.add(roteador);
+  const ondas = [0, 1, 2].map(k => {
+    const o = new THREE.Mesh(new THREE.RingGeometry(.92, 1, 56), new THREE.MeshBasicMaterial({ color: 0x7fe3ff, transparent: true, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+    o.position.set(rx, ry + .04, .17); G.add(o); return o;
+  });
+  animados.push((t, tf) => {
+    const e = entrada(tf, 1.0);
+    roteador.scale.setScalar(Math.max(e, .001) * 1.15);
+    roteador.rotation.y = .6 * Math.sin(t * 1.2);
+    roteador.position.z = .16 + .02 * Math.sin(t * 2.5);
+    roteador.getObjectByName("led").visible = Math.sin(t * 12) > -.3;
+    ondas.forEach((o, k) => {
+      const f = ((t * .7 + k / 3) % 1);
+      o.scale.setScalar(.03 + f * .24 * e);
+      o.material.opacity = (1 - f) * .9 * clamp(e);
+    });
+  });
+
+  /* Foguete 3D em órbita com rastro de faíscas */
+  const foguete = criarFoguete(); G.add(foguete);
+  const N = 70, pos = new Float32Array(N * 3), cor = new Float32Array(N * 3);
+  const rastroGeo = new THREE.BufferGeometry();
+  rastroGeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  rastroGeo.setAttribute("color", new THREE.BufferAttribute(cor, 3));
+  const rastro = new THREE.Points(rastroGeo, new THREE.PointsMaterial({ size: .035, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  rastro.frustumCulled = false; G.add(rastro);
+  const RX = .62, RY = H * .56;
+  const caminho = th => new THREE.Vector3(RX * Math.cos(th), RY * Math.sin(th), .22 + .14 * Math.sin(th * 2));
+  let ultimo = 0;
+  animados.push((t, tf) => {
+    const e = entrada(tf, .9, 1.1);
+    const th = t * .75 - Math.PI / 4;
+    const p = caminho(th), q = caminho(th + .02);
+    foguete.position.copy(p);
+    foguete.scale.setScalar(Math.max(e, .001) * .075);
+    foguete.rotation.set(0, 0, Math.atan2(q.y - p.y, q.x - p.x) - Math.PI / 2);
+    foguete.rotateY(t * 2);                                  // gira no próprio eixo
+    foguete.getObjectByName("chama").scale.y = 1 + .3 * Math.sin(t * 22);
+    foguete.getObjectByName("nucleo").scale.y = 1 + .3 * Math.sin(t * 30 + 1);
+    if (t - ultimo > .02) {                                  // empurra o rastro
+      ultimo = t;
+      pos.copyWithin(3, 0, (N - 1) * 3); cor.copyWithin(3, 0, (N - 1) * 3);
+      const bico = new THREE.Vector3(0, -.14, 0).applyQuaternion(foguete.quaternion).add(p);
+      pos.set([bico.x + (Math.random() - .5) * .02, bico.y + (Math.random() - .5) * .02, bico.z], 0);
+      cor.set([1, .6 + Math.random() * .3, .1], 0);
+    }
+    for (let k = 0; k < N; k++) { const f = 1 - k / N; cor[k * 3] *= .985; cor[k * 3 + 1] *= .96; cor[k * 3 + 2] *= .9; if (k > N * .85) { cor[k*3] *= f; } }
+    rastroGeo.attributes.position.needsUpdate = true; rastroGeo.attributes.color.needsUpdate = true;
+  });
+
+  /* Estrelinhas e cristais flutuando em volta do panfleto */
+  const cores = [0xffc933, 0xffffff, 0x7fd0ff, 0x35ff7a];
+  const estrelas = Array.from({ length: 28 }, (_, k) => {
+    const m = new THREE.Mesh(new THREE.OctahedronGeometry(.018 + Math.random() * .014), new THREE.MeshBasicMaterial({ color: cores[k % 4] }));
+    const base = new THREE.Vector3((Math.random() - .5) * 1.3, (Math.random() - .5) * H * 1.2, .08 + Math.random() * .4);
+    G.add(m); return { m, base, fase: Math.random() * 6.28, vel: .6 + Math.random() * 1.2 };
+  });
+  animados.push((t, tf) => estrelas.forEach(({ m, base, fase, vel }, k) => {
+    const e = entrada(tf, .4 + k * .03, .6);
+    m.scale.setScalar(Math.max(e, .001));
+    m.position.set(base.x + .03 * Math.sin(t * vel + fase), base.y + .05 * Math.sin(t * vel * 1.3 + fase), base.z + .04 * Math.cos(t * vel + fase));
+    m.rotation.set(t * vel, t * vel * .7, 0);
+  }));
+
+  /* Estado de reconhecimento */
+  const relogio = new THREE.Clock();
+  let achado = false, t0 = 0;
+  ancora.onTargetFound = () => { achado = true; t0 = relogio.getElapsedTime(); $("dica").classList.add("oculto"); $("moldura").classList.add("oculto"); };
+  ancora.onTargetLost  = () => { achado = false; $("dica").classList.remove("oculto"); $("moldura").classList.remove("oculto"); };
+
+  /* Toque nos botões 3D */
+  const ray = new THREE.Raycaster(), ponteiro = new THREE.Vector2();
+  renderer.domElement.addEventListener("pointerdown", e => {
+    const r = renderer.domElement.getBoundingClientRect();
+    ponteiro.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ponteiro, camera);
+    const hit = ray.intersectObjects(chips)[0];
+    if (hit) window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(hit.object.userData.msg)}`, "_blank");
+  });
+
+  await mindar.start();
+  renderer.setAnimationLoop(() => {
+    const t = relogio.getElapsedTime();
+    if (achado) animados.forEach(fn => fn(t, t - t0));
+    renderer.render(scene, camera);
+  });
+
+  $("carregando").classList.add("oculto");
+  ["dica", "moldura", "zap"].forEach(id => $(id).classList.remove("oculto"));
+}
+
+iniciar().catch(err => {
+  console.error(err);
+  $("carregando").classList.add("oculto");
+  $("erro").classList.remove("oculto");
+  if (!(err && /permission|denied|NotAllowed/i.test(String(err.name || err)))) {
+    $("erroMsg").textContent = "Não foi possível iniciar a experiência. Verifique a conexão e se o site está em HTTPS.";
+  }
+});
+</script>
+</body>
+</html>
